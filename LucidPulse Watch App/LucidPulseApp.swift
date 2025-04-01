@@ -63,97 +63,131 @@ struct LucidPulse_Watch_AppApp: App {
 class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRuntimeSessionDelegate {
     private var currentSession: WKExtendedRuntimeSession?
     private var nextScheduledDate: Date?
-    private var hapticViewModel: SettingsViewModel?
+    private var monitoringTimer: Timer?
+    var hapticViewModel: SettingsViewModel?
     
     override init() {
         super.init()
-        startMonitoringTime()
+        print("ExtendedRuntimeSessionManager initialized")
     }
     
     func scheduleNextSession(interval: TimeInterval) {
+        print("Scheduling next session with interval: \(interval) seconds")
+        
         // Invalidate any existing session
         invalidateCurrentSession()
         
         // Calculate the next scheduled time
         nextScheduledDate = Date(timeIntervalSinceNow: interval)
+        if let date = nextScheduledDate {
+            print("Next haptic scheduled for: \(date)")
+        }
         
         // Start monitoring for the next interval
         startMonitoringTime()
     }
     
     func invalidateCurrentSession() {
+        print("Invalidating current session")
         currentSession?.invalidate()
         currentSession = nil
-        nextScheduledDate = nil
+        monitoringTimer?.invalidate()
+        monitoringTimer = nil
     }
     
     private func startMonitoringTime() {
+        // Invalidate existing timer if any
+        monitoringTimer?.invalidate()
+        
         // Create a timer to check every second if we need to start a session
-        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+        monitoringTimer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
             guard let self = self,
                   let nextDate = self.nextScheduledDate else {
+                print("No next date scheduled, stopping timer")
                 timer.invalidate()
                 return
             }
             
             let timeUntilNext = nextDate.timeIntervalSinceNow
-            if timeUntilNext <= 5 { // Start session 5 seconds before needed
+            print("Time until next haptic: \(timeUntilNext) seconds")
+            
+            if timeUntilNext <= 5 && self.currentSession == nil { // Start session 5 seconds before needed
+                print("Starting extended runtime session")
                 self.startExtendedRuntimeSession()
-                timer.invalidate()
             }
         }
     }
     
     private func startExtendedRuntimeSession() {
-        guard currentSession == nil else { return }
+        guard currentSession == nil else {
+            print("Session already exists, not starting new one")
+            return
+        }
         
+        print("Creating new extended runtime session")
+        
+        // Create the session
         let session = WKExtendedRuntimeSession()
         session.delegate = self
-        session.start()
         currentSession = session
+        
+        // Schedule the haptic playback
+        if let nextDate = nextScheduledDate {
+            let timeUntilNext = nextDate.timeIntervalSinceNow
+            print("Scheduling haptic playback in \(timeUntilNext) seconds")
+            
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeUntilNext) { [weak self] in
+                guard let self = self else { return }
+                print("Time to play haptic")
+                self.playHapticAndScheduleNext()
+            }
+        }
+    }
+    
+    private func playHapticAndScheduleNext() {
+        guard let viewModel = hapticViewModel else {
+            print("No haptic view model available")
+            return
+        }
+        
+        print("Playing haptic pattern")
+        Task { @MainActor in
+            viewModel.playSelectedHaptic()
+            print("Haptic pattern played successfully")
+            
+            // Schedule the next session immediately after playing
+            if viewModel.isReminderActive {
+                print("Scheduling next session after haptic")
+                scheduleNextSession(interval: viewModel.selectedInterval.timeInterval)
+            } else {
+                print("Reminders no longer active, not scheduling next session")
+            }
+        }
     }
     
     // MARK: - WKExtendedRuntimeSessionDelegate
     
     func extendedRuntimeSession(_ session: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {
+        print("Session invalidated with reason: \(reason), error: \(String(describing: error))")
         DispatchQueue.main.async {
             self.currentSession = nil
             // If we still have a next scheduled date, start monitoring again
             if self.nextScheduledDate != nil {
+                print("Restarting monitoring after session invalidation")
                 self.startMonitoringTime()
             }
         }
     }
     
     func extendedRuntimeSessionDidStart(_ session: WKExtendedRuntimeSession) {
-        guard let nextDate = nextScheduledDate else { return }
-        
-        // Wait until the exact time to play the haptic
-        let timeUntilNext = nextDate.timeIntervalSinceNow
-        if timeUntilNext > 0 {
-            DispatchQueue.main.asyncAfter(deadline: .now() + timeUntilNext) { [weak self] in
-                guard let self = self,
-                      session === self.currentSession,
-                      session.state == .running else { return }
-                
-                // Play the haptic
-                Task { @MainActor in
-                    if let viewModel = self.hapticViewModel {
-                        viewModel.playSelectedHaptic()
-                    }
-                }
-                
-                // Schedule the next session
-                if let interval = self.hapticViewModel?.selectedInterval.timeInterval {
-                    self.scheduleNextSession(interval: interval)
-                }
-            }
-        }
+        print("Extended runtime session did start")
     }
     
     func extendedRuntimeSessionWillExpire(_ session: WKExtendedRuntimeSession) {
-        // Session is about to expire, schedule the next one if needed
+        print("Session will expire")
+        // Start monitoring for the next session before this one expires
         if nextScheduledDate != nil {
+            print("Restarting monitoring before session expiration")
             startMonitoringTime()
         }
     }

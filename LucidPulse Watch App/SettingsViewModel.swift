@@ -101,7 +101,6 @@ class SettingsViewModel: ObservableObject {
         // Use a Task for async operations like delays
         Task {
             let device = WKInterfaceDevice.current()
-            let shortPause: UInt64 = 200_000_000 // 0.2 seconds in nanoseconds (increased from 0.1s)
             let mediumPause: UInt64 = 800_000_000 // 0.8 seconds
             let longPause: UInt64 = 1200_000_000   // 1.2 seconds (increased from 0.8s)
 
