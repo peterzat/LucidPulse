@@ -1,7 +1,11 @@
 {
   "colors" : [
     {
-      "idiom" : "universal"
+      "idiom" : "watch",
+      "color" : {
+        "platform" : "watchos",
+        "reference" : "systemBlueColor"
+      }
     }
   ],
   "info" : {
