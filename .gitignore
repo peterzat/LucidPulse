@@ -1,0 +1,82 @@
+# Xcode
+#
+# gitignore contributors: remember to keep synchronized with Xcode.gitignore
+# https://github.com/github/gitignore/blob/main/Global/Xcode.gitignore
+
+## User settings
+xcuserdata/
+
+## compatibility with Xcode 8 and earlier (ignoring index)
+*.xcuserstate
+
+## compatibility with Xcode 3 and earlier (ignoring project)
+project.pbxproj
+project.xcworkspace/
+
+# Xcode 11+ ignores these as well
+*.xcscmblueprint
+*.xcdatamodeld/versions/
+
+## Build generated
+build/
+DerivedData/
+
+## Various settings
+*.moved-aside
+*.pbxuser
+!default.pbxuser
+*.mode1v3
+!default.mode1v3
+*.mode2v3
+!default.mode2v3
+*.perspectivev3
+!default.perspectivev3
+
+## Obj-C/Swift specific
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+## Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Swift Package Manager
+#
+# Add this line if you want CocoaPods manifest lock files to be committed:
+# Pods/ Manifest.lock
+#
+# Add this line if you want Carthage build products to be ignored:
+# Carthage/Build
+#
+# Add this line if you want Carthage checkouts to be ignored:
+# Carthage/Checkouts
+
+.build/
+Packages/
+*.xcodeproj
+xcuserdata/
+DerivedData/
+.swiftpm/
+
+# Cocoapods
+Pods/
+
+# Carthage
+Carthage/Build/
+Carthage/Checkouts/
+
+# Fastlane
+fastlane/report.xml
+fastlane/Preview.html
+fastlane/screenshots
+fastlane/test_output
+
+# Mac App specific
+*.app
+
+# It is recommended to uncomment the following lines if you are using
+# CocoaPods
+# Pods/
+# Podfile.lock 
