@@ -4,6 +4,9 @@ import WatchKit // Required for WKInterfaceDevice and haptics
 
 /// Represents the available time intervals for reminders.
 enum ReminderInterval: String, CaseIterable, Identifiable {
+    #if DEBUG
+    case oneMinute = "1 Minute (Debug)"
+    #endif
     case fifteenMinutes = "15 Minutes"
     case thirtyMinutes = "30 Minutes"
     case oneHour = "1 Hour"
@@ -14,6 +17,9 @@ enum ReminderInterval: String, CaseIterable, Identifiable {
     /// Returns the time interval in seconds.
     var timeInterval: TimeInterval {
         switch self {
+        #if DEBUG
+        case .oneMinute: return 60
+        #endif
         case .fifteenMinutes: return 15 * 60
         case .thirtyMinutes: return 30 * 60
         case .oneHour: return 60 * 60
