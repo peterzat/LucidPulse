@@ -136,7 +136,8 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
             let timeUntilNext = nextDate.timeIntervalSinceNow
             print("Scheduling haptic playback in \(timeUntilNext) seconds")
             
-            DispatchQueue.main.asyncAfter(deadline: .now() + timeUntilNext) { [weak self] in
+            // Schedule the haptic playback to happen immediately when the session starts
+            DispatchQueue.main.async { [weak self] in
                 guard let self = self else { return }
                 print("Time to play haptic")
                 self.playHapticAndScheduleNext()
@@ -152,6 +153,7 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         
         print("Playing haptic pattern")
         Task { @MainActor in
+            // Play the haptic pattern
             viewModel.playSelectedHaptic()
             print("Haptic pattern played successfully")
             
