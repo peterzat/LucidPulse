@@ -44,12 +44,18 @@ struct ContentView: View {
                          Text("Status: \(viewModel.isReminderActive ? "On" : "Off")")
                          Text("Interval: \(viewModel.selectedInterval.rawValue)")
                          Text("Pattern: \(viewModel.selectedPattern.rawValue)")
+                         if viewModel.isReminderActive {
+                             Text("Next reminder in: \(viewModel.selectedInterval.timeInterval.formatted()) seconds")
+                                 .foregroundColor(.blue)
+                         }
                     }
 
                     // Button for manual testing of haptics
                     Section {
                         Button("Test Haptic") {
-                            viewModel.playSelectedHaptic()
+                            Task {
+                                await viewModel.playSelectedHaptic()
+                            }
                         }
                     }
                 } else {
