@@ -1,13 +1,24 @@
+<p align="center">
+  <img src="images/LucidPulse.png" width="128" height="128" alt="LucidPulse Icon">
+</p>
+
 # LucidPulse watchOS App
 
 ## Overview
 
 LucidPulse is a watchOS application designed to provide periodic haptic feedback reminders. Users can configure the time interval between reminders and choose from several distinct haptic patterns. The goal is to provide a subtle, configurable "reality check" or mindful moment prompt directly on the Apple Watch.
 
+## Screenshot
+
+![LucidPulse App Interface](images/app-screenshot.jpg)
+
 ## Features
 
 *   **Configurable Intervals:** Set reminders for every 15 minutes, 30 minutes, 1 hour, or 2 hours.
-*   **Multiple Haptic Patterns:** Choose from different haptic sequences (e.g., Five Long Buzzes, Short/Medium/Long mix, Long/Pause repeats).
+*   **Multiple Haptic Patterns:** Choose from different haptic patterns:
+    - Long Pulses: Five long notification haptics
+    - Short Pulses: Eight short success haptics
+    - Pulse, Pause, Pulse: Two long notification haptics with pause
 *   **On/Off Toggle:** Easily enable or disable the reminders from the main interface.
 *   **Background Operation:** Utilizes watchOS background tasks (`BGTaskScheduler`) to ensure haptics are delivered reliably even when the app isn't in the foreground.
 *   **SwiftUI Interface:** Modern UI built with SwiftUI for watchOS.
