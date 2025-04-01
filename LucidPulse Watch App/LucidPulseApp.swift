@@ -6,92 +6,155 @@
 //
 
 import SwiftUI
-#if canImport(BackgroundTasks)
-import BackgroundTasks // Import the BackgroundTasks framework
-#endif
-
-// Define a unique identifier for the background task
-let backgroundTaskIdentifier = "com.yourdomain.LucidPulse.reminderTask" // Replace with your actual domain
+import WatchKit
 
 @main
 struct LucidPulse_Watch_AppApp: App {
     // Keep a reference to the ViewModel
     @StateObject private var settingsViewModel = SettingsViewModel()
-
+    
     // Scene phase helps manage app lifecycle events
     @Environment(\.scenePhase) private var scenePhase
-
+    
+    // Create a session manager to handle background tasks
+    @StateObject private var sessionManager = ExtendedRuntimeSessionManager()
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
-                 // Pass the ViewModel to the ContentView
-                 .environmentObject(settingsViewModel)
+                .environmentObject(settingsViewModel)
+                .onAppear {
+                    sessionManager.hapticViewModel = settingsViewModel
+                    if settingsViewModel.isReminderActive {
+                        sessionManager.scheduleNextSession(interval: settingsViewModel.selectedInterval.timeInterval)
+                    }
+                }
+                .onChange(of: settingsViewModel.isReminderActive) { _, isActive in
+                    if isActive {
+                        sessionManager.scheduleNextSession(interval: settingsViewModel.selectedInterval.timeInterval)
+                    } else {
+                        sessionManager.invalidateCurrentSession()
+                    }
+                }
+                .onChange(of: settingsViewModel.selectedInterval) { _, newInterval in
+                    if settingsViewModel.isReminderActive {
+                        sessionManager.scheduleNextSession(interval: newInterval.timeInterval)
+                    }
+                }
         }
-        #if canImport(BackgroundTasks)
-        // Register the background task handler when the app launches
-        .backgroundTask(.appRefresh(backgroundTaskIdentifier)) {
-             await handleAppRefresh()
-        }
-        #endif
-        // Monitor scene phase changes
         .onChange(of: scenePhase) { oldPhase, newPhase in
-            if newPhase == .background {
-                // Schedule the next reminder when the app moves to the background
-                #if canImport(BackgroundTasks)
-                scheduleAppRefresh()
-                #else
-                // BackgroundTasks not available on simulator
-                print("Simulator: Background scheduling skipped.")
-                #endif
+            switch newPhase {
+            case .active:
+                if settingsViewModel.isReminderActive {
+                    sessionManager.scheduleNextSession(interval: settingsViewModel.selectedInterval.timeInterval)
+                }
+            case .background:
+                // No need to do anything special when going to background
+                break
+            case .inactive:
+                break
+            @unknown default:
+                break
             }
         }
     }
+}
 
-    /// Function to schedule the background app refresh task.
-    func scheduleAppRefresh() {
-        #if canImport(BackgroundTasks)
-        // Ensure reminders are active before scheduling
-        guard settingsViewModel.isReminderActive else {
-            print("Background Task: Reminders are disabled, cancelling existing tasks.")
-            BGTaskScheduler.shared.cancel(taskRequestWithIdentifier: backgroundTaskIdentifier)
-            return
-        }
-
-        let request = BGAppRefreshTaskRequest(identifier: backgroundTaskIdentifier)
-        // Set the earliest begin date based on the selected interval
-        request.earliestBeginDate = Date(timeIntervalSinceNow: settingsViewModel.selectedInterval.timeInterval)
-
-        do {
-            try BGTaskScheduler.shared.submit(request)
-            print("Background Task: Scheduled app refresh for \(request.earliestBeginDate?.description ?? "immediately")")
-        } catch {
-            print("Background Task: Could not schedule app refresh: \(error)")
-        }
-        #else
-        // BackgroundTasks not available on simulator
-        print("Simulator: scheduleAppRefresh called, but BackgroundTasks not available.")
-        #endif
+class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRuntimeSessionDelegate {
+    private var currentSession: WKExtendedRuntimeSession?
+    private var nextScheduledDate: Date?
+    private var hapticViewModel: SettingsViewModel?
+    
+    override init() {
+        super.init()
+        startMonitoringTime()
     }
-
-    /// Function to handle the background task when it executes.
-    func handleAppRefresh() async {
-        #if canImport(BackgroundTasks)
-        // Schedule the next refresh immediately to keep the chain going
-        scheduleAppRefresh()
-
-        // Perform the haptic playback
-        print("Background Task: Handling app refresh - Playing haptic.")
-        await Task { // Perform UI related tasks on main actor
-             settingsViewModel.playSelectedHaptic()
-        }.value
-
-        // Log the event (using the ViewModel's telemetry placeholder)
-        await Task {
-             settingsViewModel.logReminderTriggered()
-        }.value
-        #else
-        // This should theoretically not be called on simulator as the handler isn't registered
-        print("Simulator: handleAppRefresh called unexpectedly.")
-        #endif
+    
+    func scheduleNextSession(interval: TimeInterval) {
+        // Invalidate any existing session
+        invalidateCurrentSession()
+        
+        // Calculate the next scheduled time
+        nextScheduledDate = Date(timeIntervalSinceNow: interval)
+        
+        // Start monitoring for the next interval
+        startMonitoringTime()
+    }
+    
+    func invalidateCurrentSession() {
+        currentSession?.invalidate()
+        currentSession = nil
+        nextScheduledDate = nil
+    }
+    
+    private func startMonitoringTime() {
+        // Create a timer to check every second if we need to start a session
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { [weak self] timer in
+            guard let self = self,
+                  let nextDate = self.nextScheduledDate else {
+                timer.invalidate()
+                return
+            }
+            
+            let timeUntilNext = nextDate.timeIntervalSinceNow
+            if timeUntilNext <= 5 { // Start session 5 seconds before needed
+                self.startExtendedRuntimeSession()
+                timer.invalidate()
+            }
+        }
+    }
+    
+    private func startExtendedRuntimeSession() {
+        guard currentSession == nil else { return }
+        
+        let session = WKExtendedRuntimeSession()
+        session.delegate = self
+        session.start()
+        currentSession = session
+    }
+    
+    // MARK: - WKExtendedRuntimeSessionDelegate
+    
+    func extendedRuntimeSession(_ session: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {
+        DispatchQueue.main.async {
+            self.currentSession = nil
+            // If we still have a next scheduled date, start monitoring again
+            if self.nextScheduledDate != nil {
+                self.startMonitoringTime()
+            }
+        }
+    }
+    
+    func extendedRuntimeSessionDidStart(_ session: WKExtendedRuntimeSession) {
+        guard let nextDate = nextScheduledDate else { return }
+        
+        // Wait until the exact time to play the haptic
+        let timeUntilNext = nextDate.timeIntervalSinceNow
+        if timeUntilNext > 0 {
+            DispatchQueue.main.asyncAfter(deadline: .now() + timeUntilNext) { [weak self] in
+                guard let self = self,
+                      session === self.currentSession,
+                      session.state == .running else { return }
+                
+                // Play the haptic
+                Task { @MainActor in
+                    if let viewModel = self.hapticViewModel {
+                        viewModel.playSelectedHaptic()
+                    }
+                }
+                
+                // Schedule the next session
+                if let interval = self.hapticViewModel?.selectedInterval.timeInterval {
+                    self.scheduleNextSession(interval: interval)
+                }
+            }
+        }
+    }
+    
+    func extendedRuntimeSessionWillExpire(_ session: WKExtendedRuntimeSession) {
+        // Session is about to expire, schedule the next one if needed
+        if nextScheduledDate != nil {
+            startMonitoringTime()
+        }
     }
 }
