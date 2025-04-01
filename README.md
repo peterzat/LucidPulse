@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="images/LucidPulse.png" width="128" height="128" alt="LucidPulse Icon">
+  <img src="images/LucidPulse.png" width="256" height="256" alt="LucidPulse Icon">
 </p>
 
-# LucidPulse watchOS App
+<h1 align="center">LucidPulse watchOS App</h1>
 
 ## Overview
 
