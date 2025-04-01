@@ -79,4 +79,8 @@ fastlane/test_output
 # It is recommended to uncomment the following lines if you are using
 # CocoaPods
 # Pods/
-# Podfile.lock 
+# Podfile.lock
+
+# macOS system files
+.DS_Store
+**/.DS_Store 

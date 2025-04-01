@@ -11,7 +11,7 @@ import BackgroundTasks // Import the BackgroundTasks framework
 #endif
 
 // Define a unique identifier for the background task
-let backgroundTaskIdentifier = "com.yourappdomain.LucidPulse.reminderTask" // Replace with your actual domain
+let backgroundTaskIdentifier = "com.yourdomain.LucidPulse.reminderTask" // Replace with your actual domain
 
 @main
 struct LucidPulse_Watch_AppApp: App {

@@ -59,4 +59,88 @@ LucidPulse is a watchOS application designed to provide periodic haptic feedback
 ## Testing
 
 *   **Unit Tests:** Run the tests in the `LucidPulse Watch AppTests` target using **Product > Test** in Xcode.
-*   **Manual Testing:** Run the app on a device/simulator. Test toggling reminders on/off, changing intervals/patterns, and background functionality (set a short interval like 15 min, send the app to the background, and wait). 
+*   **Manual Testing:** Run the app on a device/simulator. Test toggling reminders on/off, changing intervals/patterns, and background functionality (set a short interval like 15 min, send the app to the background, and wait).
+
+# WatchOS App Icon Generator
+
+This Python script generates all required icon sizes for a watchOS app from a single 1024x1024 source image.
+
+## Requirements
+
+- Python 3.6 or higher
+- Pillow library
+
+## Installation
+
+1. Install the required dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+Run the script with your 1024x1024 source image:
+
+```bash
+python generate_watch_icons.py path/to/your/icon.png
+```
+
+By default, the generated icons will be saved in a `watch_icons` directory. You can specify a different output directory using the `--output-dir` option:
+
+```bash
+python generate_watch_icons.py path/to/your/icon.png --output-dir my_icons
+```
+
+## Generated Icon Sizes
+
+The script generates the following icon sizes:
+
+### App Store
+- 1024x1024
+
+### Quick Look
+- 108x108 (49mm)
+- 97x97 (45mm)
+- 94x94 (44mm)
+- 86x86 (41mm)
+- 80x80 (38mm)
+
+### App Launcher
+- 100x100 (49mm)
+- 92x92 (45mm)
+- 88x88 (44mm)
+
+### Notification Center
+- 66x66 (45mm)
+- 58x58 (41mm)
+
+### Companion Settings
+- 87x87 (@3x)
+
+### Additional Sizes
+- 48x48
+- 55x55
+- 66x66
+- 58x58
+- 87x87
+- 80x80
+- 88x88
+- 92x92
+- 100x100
+- 102x102
+- 108x108
+- 172x172
+- 196x196
+- 216x216
+- 234x234
+- 258x258
+
+## Output
+
+The generated icons will be named with the pattern: `original_name-widthxheight.png`
+
+Example: If your source image is named `app_icon.png`, the generated files will be:
+- `app_icon-1024x1024.png`
+- `app_icon-108x108.png`
+- `app_icon-97x97.png`
+etc. 

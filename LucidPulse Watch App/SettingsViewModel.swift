@@ -25,13 +25,10 @@ enum ReminderInterval: String, CaseIterable, Identifiable {
 /// Represents the available haptic patterns for reminders.
 enum HapticPattern: String, CaseIterable, Identifiable {
     case fiveLong = "Five Long Buzzes"
-    case shortMediumLong = "Short, Medium, Long"
-    case longPauseRepeat = "Long, Pause, Repeat"
-    // Add more patterns here if needed
+    case longPauseShort = "Long, Pause, Short, Short, Short"
+    case shortLongShort = "Short, Short, Short, Long, Long, Long, Short, Short, Short"
 
     var id: String { self.rawValue }
-
-    // Removed watchKitHapticType as custom logic is implemented below
 }
 
 /// Manages the application's settings and state.
@@ -109,37 +106,38 @@ class SettingsViewModel: ObservableObject {
                     try? await Task.sleep(nanoseconds: mediumPause)
                 }
 
-            case .shortMediumLong:
-                // 3 short
+            case .longPauseShort:
+                // Long buzz
+                device.play(.notification)
+                try? await Task.sleep(nanoseconds: longPause)
+                // Three short buzzes
                 for _ in 0..<3 {
                     device.play(.click)
                     try? await Task.sleep(nanoseconds: shortPause)
                 }
-                try? await Task.sleep(nanoseconds: mediumPause) // Pause between groups
-                // 3 medium (using directionUp as stand-in)
-                for _ in 0..<3 {
-                    device.play(.directionUp)
-                    try? await Task.sleep(nanoseconds: shortPause)
-                }
-                try? await Task.sleep(nanoseconds: mediumPause) // Pause between groups
-                // 2 long
-                for _ in 0..<2 {
-                    device.play(.notification)
-                    try? await Task.sleep(nanoseconds: shortPause)
-                }
 
-            case .longPauseRepeat:
-                for i in 0..<3 {
+            case .shortLongShort:
+                // First three short buzzes
+                for _ in 0..<3 {
+                    device.play(.click)
+                    try? await Task.sleep(nanoseconds: shortPause)
+                }
+                try? await Task.sleep(nanoseconds: mediumPause)
+                // Three long buzzes
+                for _ in 0..<3 {
                     device.play(.notification)
-                    // Only pause if not the last iteration
-                    if i < 2 {
-                        try? await Task.sleep(nanoseconds: longPause)
-                    }
+                    try? await Task.sleep(nanoseconds: shortPause)
+                }
+                try? await Task.sleep(nanoseconds: mediumPause)
+                // Final three short buzzes
+                for _ in 0..<3 {
+                    device.play(.click)
+                    try? await Task.sleep(nanoseconds: shortPause)
                 }
             }
 
             // Log the event after the pattern finishes playing
-             logReminderTriggered()
+            logReminderTriggered()
         }
     }
 } 
