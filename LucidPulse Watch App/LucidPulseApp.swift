@@ -168,6 +168,9 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         // Add a small delay before scheduling next session
         try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
+        // Reset state before scheduling next session
+        isPlayingHaptics = false
+        
         // Schedule next session
         if viewModel.isReminderActive {
             print("Scheduling next session after haptic sequence")
@@ -175,8 +178,6 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         } else {
             print("Reminders no longer active, not scheduling next session")
         }
-        
-        isPlayingHaptics = false
     }
     
     // MARK: - WKExtendedRuntimeSessionDelegate
