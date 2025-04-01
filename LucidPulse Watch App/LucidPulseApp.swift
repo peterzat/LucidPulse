@@ -64,8 +64,6 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
     private var currentSession: WKExtendedRuntimeSession?
     private var nextScheduledDate: Date?
     private var monitoringTimer: Timer?
-    private var hapticPlaybackTimer: Timer?
-    private var remainingHaptics: Int = 0
     var hapticViewModel: SettingsViewModel?
     
     override init() {
@@ -95,9 +93,6 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         currentSession = nil
         monitoringTimer?.invalidate()
         monitoringTimer = nil
-        hapticPlaybackTimer?.invalidate()
-        hapticPlaybackTimer = nil
-        remainingHaptics = 0
     }
     
     private func startMonitoringTime() {
@@ -137,58 +132,34 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         currentSession = session
         
         // Start haptic sequence immediately
-        startHapticSequence()
-    }
-    
-    private func startHapticSequence() {
-        guard let viewModel = hapticViewModel else {
-            print("No haptic view model available")
-            return
-        }
-        
-        // Set up the haptic sequence
-        remainingHaptics = 5 // Number of haptics in the sequence
-        print("Starting haptic sequence with \(remainingHaptics) haptics")
-        
-        // Play first haptic immediately
-        playNextHaptic()
-        
-        // Schedule remaining haptics
-        hapticPlaybackTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
-            guard let self = self else {
-                timer.invalidate()
-                return
-            }
-            
-            self.playNextHaptic()
-        }
-    }
-    
-    private func playNextHaptic() {
-        guard let viewModel = hapticViewModel else {
-            print("No haptic view model available")
-            return
-        }
-        
-        guard remainingHaptics > 0 else {
-            print("Haptic sequence complete")
-            hapticPlaybackTimer?.invalidate()
-            hapticPlaybackTimer = nil
-            
-            // Schedule next session
-            if viewModel.isReminderActive {
-                print("Scheduling next session after haptic sequence")
-                scheduleNextSession(interval: viewModel.selectedInterval.timeInterval)
-            } else {
-                print("Reminders no longer active, not scheduling next session")
-            }
-            return
-        }
-        
-        print("Playing haptic \(6 - remainingHaptics) of 5")
         Task { @MainActor in
+            print("Starting haptic sequence in background task")
+            await playHapticSequence()
+        }
+    }
+    
+    private func playHapticSequence() async {
+        guard let viewModel = hapticViewModel else {
+            print("No haptic view model available")
+            return
+        }
+        
+        print("Playing haptic sequence")
+        for i in 1...5 {
+            print("Playing haptic \(i) of 5")
             viewModel.playSelectedHaptic()
-            remainingHaptics -= 1
+            print("Completed haptic \(i) of 5")
+            // Add a small delay between haptics
+            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
+        }
+        print("Haptic sequence complete")
+        
+        // Schedule next session
+        if viewModel.isReminderActive {
+            print("Scheduling next session after haptic sequence")
+            scheduleNextSession(interval: viewModel.selectedInterval.timeInterval)
+        } else {
+            print("Reminders no longer active, not scheduling next session")
         }
     }
     
