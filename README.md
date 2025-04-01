@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="images/LucidPulse.png" width="256" height="256" alt="LucidPulse Icon">
+  <img src="https://raw.githubusercontent.com/peterzat/LucidPulse/main/images/LucidPulse.png" width="256" height="256" alt="LucidPulse Icon">
 </p>
 
 <h1 align="center">LucidPulse watchOS App</h1>
@@ -10,7 +10,9 @@ LucidPulse is a watchOS application designed to provide periodic haptic feedback
 
 ## Screenshot
 
-![LucidPulse App Interface](images/app-screenshot.jpg)
+<p align="center">
+  <img src="https://raw.githubusercontent.com/peterzat/LucidPulse/main/images/app-screenshot.jpg" alt="LucidPulse App Interface" width="390">
+</p>
 
 ## Features
 
