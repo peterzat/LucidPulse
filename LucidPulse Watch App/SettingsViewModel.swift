@@ -24,9 +24,9 @@ enum ReminderInterval: String, CaseIterable, Identifiable {
 
 /// Represents the available haptic patterns for reminders.
 enum HapticPattern: String, CaseIterable, Identifiable {
-    case fiveLong = "Five Long Buzzes"
-    case longPauseShort = "Long, Pause, Short, Short, Short"
-    case shortLongShort = "Short, Short, Short, Long, Long, Long, Short, Short, Short"
+    case fiveLong = "Long Pulses"
+    case eightShort = "Short Pulses"
+    case longPauseLong = "Pulse, Pause, Pulse"
 
     var id: String { self.rawValue }
 }
@@ -95,45 +95,37 @@ class SettingsViewModel: ObservableObject {
         // Use a Task for async operations like delays
         Task {
             let device = WKInterfaceDevice.current()
-            let shortPause: UInt64 = 150_000_000 // 0.15 seconds in nanoseconds
-            let mediumPause: UInt64 = 300_000_000 // 0.3 seconds
-            let longPause: UInt64 = 500_000_000   // 0.5 seconds
+            let shortPause: UInt64 = 200_000_000 // 0.2 seconds in nanoseconds (increased from 0.1s)
+            let mediumPause: UInt64 = 800_000_000 // 0.8 seconds
+            let longPause: UInt64 = 1200_000_000   // 1.2 seconds (increased from 0.8s)
 
             switch selectedPattern {
             case .fiveLong:
-                for _ in 0..<5 {
+                print("Starting five long buzzes pattern")
+                for i in 0..<5 {
+                    print("Playing buzz \(i + 1) of 5")
                     device.play(.notification)
                     try? await Task.sleep(nanoseconds: mediumPause)
                 }
+                print("Finished five long buzzes pattern")
 
-            case .longPauseShort:
-                // Long buzz
+            case .eightShort:
+                print("Starting eight short buzzes pattern")
+                for i in 0..<8 {
+                    print("Playing buzz \(i + 1) of 8")
+                    device.play(.success)
+                    try? await Task.sleep(nanoseconds: 300_000_000) // 0.3 seconds between each buzz
+                }
+                print("Finished eight short buzzes pattern")
+
+            case .longPauseLong:
+                print("Starting long pause long pattern")
+                // First long buzz
                 device.play(.notification)
                 try? await Task.sleep(nanoseconds: longPause)
-                // Three short buzzes
-                for _ in 0..<3 {
-                    device.play(.click)
-                    try? await Task.sleep(nanoseconds: shortPause)
-                }
-
-            case .shortLongShort:
-                // First three short buzzes
-                for _ in 0..<3 {
-                    device.play(.click)
-                    try? await Task.sleep(nanoseconds: shortPause)
-                }
-                try? await Task.sleep(nanoseconds: mediumPause)
-                // Three long buzzes
-                for _ in 0..<3 {
-                    device.play(.notification)
-                    try? await Task.sleep(nanoseconds: shortPause)
-                }
-                try? await Task.sleep(nanoseconds: mediumPause)
-                // Final three short buzzes
-                for _ in 0..<3 {
-                    device.play(.click)
-                    try? await Task.sleep(nanoseconds: shortPause)
-                }
+                // Second long buzz
+                device.play(.notification)
+                print("Finished long pause long pattern")
             }
 
             // Log the event after the pattern finishes playing
