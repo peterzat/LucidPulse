@@ -160,14 +160,13 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         isPlayingHaptics = true
         print("Playing haptic sequence")
         
-        for i in 1...5 {
-            print("Playing haptic \(i) of 5")
-            await viewModel.playSelectedHaptic()
-            print("Completed haptic \(i) of 5")
-            // Add a small delay between haptics
-            try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
-        }
-        print("Haptic sequence complete")
+        // Play the haptic pattern once
+        print("Playing haptic pattern")
+        await viewModel.playSelectedHaptic()
+        print("Completed haptic pattern")
+        
+        // Add a small delay before scheduling next session
+        try await Task.sleep(nanoseconds: 1_000_000_000) // 1 second
         
         // Schedule next session
         if viewModel.isReminderActive {
