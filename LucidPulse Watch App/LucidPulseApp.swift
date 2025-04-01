@@ -64,6 +64,7 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
     private var currentSession: WKExtendedRuntimeSession?
     private var nextScheduledDate: Date?
     private var monitoringTimer: Timer?
+    private var isPlayingHaptics = false
     var hapticViewModel: SettingsViewModel?
     
     override init() {
@@ -73,6 +74,12 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
     
     func scheduleNextSession(interval: TimeInterval) {
         print("Scheduling next session with interval: \(interval) seconds")
+        
+        // Don't schedule if we're already playing haptics
+        guard !isPlayingHaptics else {
+            print("Already playing haptics, skipping new schedule")
+            return
+        }
         
         // Invalidate any existing session
         invalidateCurrentSession()
@@ -93,6 +100,7 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         currentSession = nil
         monitoringTimer?.invalidate()
         monitoringTimer = nil
+        isPlayingHaptics = false
     }
     
     private func startMonitoringTime() {
@@ -111,7 +119,7 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
             let timeUntilNext = nextDate.timeIntervalSinceNow
             print("Time until next haptic: \(timeUntilNext) seconds")
             
-            if timeUntilNext <= 5 && self.currentSession == nil { // Start session 5 seconds before needed
+            if timeUntilNext <= 5 && self.currentSession == nil && !self.isPlayingHaptics {
                 print("Starting extended runtime session")
                 self.startExtendedRuntimeSession()
             }
@@ -119,8 +127,8 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
     }
     
     private func startExtendedRuntimeSession() {
-        guard currentSession == nil else {
-            print("Session already exists, not starting new one")
+        guard currentSession == nil && !isPlayingHaptics else {
+            print("Session already exists or haptics playing, not starting new one")
             return
         }
         
@@ -134,20 +142,27 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         // Start haptic sequence immediately
         Task { @MainActor in
             print("Starting haptic sequence in background task")
-            await playHapticSequence()
+            do {
+                try await playHapticSequence()
+            } catch {
+                print("Error playing haptic sequence: \(error)")
+                self.invalidateCurrentSession()
+            }
         }
     }
     
-    private func playHapticSequence() async {
+    private func playHapticSequence() async throws {
         guard let viewModel = hapticViewModel else {
             print("No haptic view model available")
             return
         }
         
+        isPlayingHaptics = true
         print("Playing haptic sequence")
+        
         for i in 1...5 {
             print("Playing haptic \(i) of 5")
-            viewModel.playSelectedHaptic()
+            await viewModel.playSelectedHaptic()
             print("Completed haptic \(i) of 5")
             // Add a small delay between haptics
             try await Task.sleep(nanoseconds: 500_000_000) // 0.5 seconds
@@ -161,6 +176,8 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         } else {
             print("Reminders no longer active, not scheduling next session")
         }
+        
+        isPlayingHaptics = false
     }
     
     // MARK: - WKExtendedRuntimeSessionDelegate
@@ -169,8 +186,8 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         print("Session invalidated with reason: \(reason), error: \(String(describing: error))")
         DispatchQueue.main.async {
             self.currentSession = nil
-            // If we still have a next scheduled date, start monitoring again
-            if self.nextScheduledDate != nil {
+            // Only restart monitoring if we're not currently playing haptics
+            if self.nextScheduledDate != nil && !self.isPlayingHaptics {
                 print("Restarting monitoring after session invalidation")
                 self.startMonitoringTime()
             }
@@ -183,8 +200,8 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
     
     func extendedRuntimeSessionWillExpire(_ session: WKExtendedRuntimeSession) {
         print("Session will expire")
-        // Start monitoring for the next session before this one expires
-        if nextScheduledDate != nil {
+        // Only restart monitoring if we're not currently playing haptics
+        if nextScheduledDate != nil && !isPlayingHaptics {
             print("Restarting monitoring before session expiration")
             startMonitoringTime()
         }
