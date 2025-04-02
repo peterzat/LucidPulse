@@ -105,10 +105,20 @@ class SettingsViewModel: ObservableObject {
         switch selectedPattern {
         case .fiveLong:
             print("Starting five long buzzes pattern")
+            let pauseDuration: UInt64 = 1_000_000_000 // 1.0 second pause
             for i in 0..<5 {
-                print("Playing buzz \(i + 1) of 5")
+                print("Attempting to play buzz \(i + 1) of 5")
                 device.play(.notification)
-                try? await Task.sleep(nanoseconds: mediumPause)
+                print("Played buzz \(i + 1). Pausing...")
+                // Ensure the pause happens even if the haptic call is brief
+                do {
+                    try await Task.sleep(nanoseconds: pauseDuration)
+                } catch {
+                    print("Sleep interrupted: \(error)")
+                    // Decide how to handle interruption, maybe break or continue?
+                    break // Exit loop if sleep is interrupted
+                }
+                print("Pause complete after buzz \(i + 1)")
             }
             print("Finished five long buzzes pattern")
 
