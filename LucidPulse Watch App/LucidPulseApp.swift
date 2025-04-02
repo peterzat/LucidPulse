@@ -81,9 +81,6 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
             return
         }
         
-        // Invalidate any existing session
-        invalidateCurrentSession()
-        
         // Calculate the next scheduled time
         nextScheduledDate = Date(timeIntervalSinceNow: interval)
         if let date = nextScheduledDate {
@@ -96,8 +93,11 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
     
     func invalidateCurrentSession() {
         print("Invalidating current session")
-        currentSession?.invalidate()
-        currentSession = nil
+        // Only invalidate if we have an active session
+        if let session = currentSession {
+            session.invalidate()
+            currentSession = nil
+        }
         monitoringTimer?.invalidate()
         monitoringTimer = nil
         isPlayingHaptics = false
@@ -119,20 +119,33 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
             let timeUntilNext = nextDate.timeIntervalSinceNow
             print("Time until next haptic: \(timeUntilNext) seconds")
             
-            if timeUntilNext <= 5 && self.currentSession == nil && !self.isPlayingHaptics {
-                print("Starting extended runtime session")
+            // Start a new session if we're past the scheduled time and not currently playing
+            if timeUntilNext <= 0 && !self.isPlayingHaptics {
+                print("Scheduled time reached, starting new session")
+                self.startExtendedRuntimeSession()
+            }
+            // Or if we're within 5 seconds of the scheduled time
+            else if timeUntilNext <= 5 && self.currentSession == nil && !self.isPlayingHaptics {
+                print("Within 5 seconds of scheduled time, starting extended runtime session")
                 self.startExtendedRuntimeSession()
             }
         }
     }
     
     private func startExtendedRuntimeSession() {
-        guard currentSession == nil && !isPlayingHaptics else {
-            print("Session already exists or haptics playing, not starting new one")
+        // Only prevent starting if we're currently playing haptics
+        guard !isPlayingHaptics else {
+            print("Haptics currently playing, not starting new session")
             return
         }
         
         print("Creating new extended runtime session")
+        
+        // Invalidate any existing session before creating a new one
+        if let existingSession = currentSession {
+            existingSession.invalidate()
+            currentSession = nil
+        }
         
         // Create the session
         let session = WKExtendedRuntimeSession()
@@ -174,7 +187,16 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
         // Schedule next session
         if viewModel.isReminderActive {
             print("Scheduling next session after haptic sequence")
-            scheduleNextSession(interval: viewModel.selectedInterval.timeInterval)
+            // Calculate next scheduled time
+            nextScheduledDate = Date(timeIntervalSinceNow: viewModel.selectedInterval.timeInterval)
+            if let date = nextScheduledDate {
+                print("Next haptic scheduled for: \(date)")
+            }
+            // Ensure monitoring timer is running
+            if monitoringTimer == nil {
+                print("Restarting monitoring timer")
+                startMonitoringTime()
+            }
         } else {
             print("Reminders no longer active, not scheduling next session")
         }
@@ -185,7 +207,10 @@ class ExtendedRuntimeSessionManager: NSObject, ObservableObject, WKExtendedRunti
     func extendedRuntimeSession(_ session: WKExtendedRuntimeSession, didInvalidateWith reason: WKExtendedRuntimeSessionInvalidationReason, error: Error?) {
         print("Session invalidated with reason: \(reason), error: \(String(describing: error))")
         DispatchQueue.main.async {
-            self.currentSession = nil
+            // Only clear the session if it matches our current session
+            if self.currentSession === session {
+                self.currentSession = nil
+            }
             // Only restart monitoring if we're not currently playing haptics
             if self.nextScheduledDate != nil && !self.isPlayingHaptics {
                 print("Restarting monitoring after session invalidation")
